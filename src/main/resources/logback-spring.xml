@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Spring Boot's default base configuration. This includes CONSOLE appender. -->
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <!-- Define a property for the log directory. This will be relative to the application's working directory. -->
+    <property name="LOG_HOME" value="/app/logs"/>
+    <!-- In a Docker environment, /app is the WORKDIR. This will be mapped to a host volume. -->
+
+    <!-- Appender for TRACE and INFO logs (excluding DEBUG) -->
+    <appender name="TRACE_INFO_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/trace_info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Daily rollover, and also rollover when file size exceeds 10MB -->
+            <fileNamePattern>${LOG_HOME}/trace_info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- Max file size for each log file -->
+            <maxFileSize>10MB</maxFileSize>
+            <!-- Maximum number of archived log files to keep (e.g., 30 files) -->
+            <maxHistory>30</maxHistory>
+            <!-- Total size of all archived log files (optional, but good for disk space management) -->
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- Filter Chain for TRACE and INFO only, excluding DEBUG, WARN, ERROR -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <!-- First, ensure all levels from TRACE upwards are considered by this appender -->
+            <level>TRACE</level>
+        </filter>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <!-- Second, explicitly DENY DEBUG messages -->
+            <level>DEBUG</level>
+            <onMatch>DENY</onMatch>
+            <onMismatch>NEUTRAL</onMismatch> <!-- Let other levels (TRACE, INFO, WARN, ERROR) pass to the next filter -->
+        </filter>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <!-- Third, DENY WARN and ERROR messages, ACCEPTING only TRACE and INFO -->
+            <level>WARN</level>
+            <onMatch>DENY</onMatch>
+            <onMismatch>ACCEPT</onMismatch> <!-- Accept levels below WARN (TRACE, INFO) -->
+        </filter>
+    </appender>
+
+    <!-- Appender for WARN and ERROR logs -->
+    <appender name="WARN_ERROR_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/warn_error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Daily rollover, and also rollover when file size exceeds 5MB -->
+            <fileNamePattern>${LOG_HOME}/warn_error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- Max file size for each log file -->
+            <maxFileSize>5MB</maxFileSize>
+            <!-- Maximum number of archived log files to keep (e.g., 15 files) -->
+            <maxHistory>15</maxHistory>
+            <!-- Total size of all archived log files -->
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- ThresholdFilter to only include WARN and ERROR levels for this file.
+             It accepts all messages at or above the specified level. -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level> <!-- Only accept WARN and ERROR messages -->
+        </filter>
+    </appender>
+
+
+    <logger name="errorLogger" level="ERROR" additivity="false">
+        <appender-ref ref="WARN_ERROR_LOG_FILE"/>
+    </logger>
+
+    <logger name="traceLogger" level="TRACE" additivity="false">
+        <appender-ref ref="TRACE_INFO_LOG_FILE"/>
+    </logger>
+
+
+</configuration>

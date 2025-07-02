@@ -26,7 +26,6 @@ public class WishlistController {
     public ResponseEntity<WishlistProductResponse> getCustomerWishlist(@RequestBody WishlistRequest request) {
         WishlistProductResponse wishlistProductResponse
                 = wishlistService.getWishlistResponseByCustomerId(request.getCustomerId());
-        List<WishlistProduct> products = wishlistService.getWishlistByCustomerId(request.getCustomerId());
         return ResponseEntity.ok(wishlistProductResponse);
     }
 }
