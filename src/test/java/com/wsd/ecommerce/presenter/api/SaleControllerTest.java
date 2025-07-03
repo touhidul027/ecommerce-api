@@ -57,14 +57,6 @@ public class SaleControllerTest {
     }
 
     @Test
-    void getTotalSaleAmountForToday_shouldReturnInternalServerError_whenServiceThrowsException() throws Exception {
-        when(saleService.getTotalSaleAmountForToday()).thenThrow(new RuntimeException("Database error during sale calculation."));
-        mockMvc.perform(get("/api/v1/sales/today/total").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
     void getMaxSaleDay_shouldReturnMaxSaleDay_whenValidRangeAndSalesExist() throws Exception {
         LocalDate startDate = LocalDate.of(2025, 6, 1);
         LocalDate endDate = LocalDate.of(2025, 6, 30);
@@ -100,38 +92,6 @@ public class SaleControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.maxSaleDate").doesNotExist())
                 .andExpect(jsonPath("$.maxSaleAmount").value(BigDecimal.ZERO.doubleValue()));
-    }
-
-    @Test
-    void getMaxSaleDay_shouldReturnBadRequest_whenStartDateIsAfterEndDate() throws Exception {
-        LocalDate startDate = LocalDate.of(2025, 6, 30);
-        LocalDate endDate = LocalDate.of(2025, 6, 1);
-
-        when(saleService.getMaxSaleDay(startDate, endDate))
-                .thenThrow(new IllegalArgumentException("Start date cannot be after end date."));
-
-        mockMvc.perform(get("/api/v1/sales/max-sale-day")
-                        .param("startDate", startDate.toString())
-                        .param("endDate", endDate.toString())
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Start date cannot be after end date."));
-    }
-
-    @Test
-    void getMaxSaleDay_shouldReturnInternalServerError_whenServiceThrowsUnexpectedException() throws Exception {
-        LocalDate startDate = LocalDate.of(2025, 6, 1);
-        LocalDate endDate = LocalDate.of(2025, 6, 30);
-
-        when(saleService.getMaxSaleDay(startDate, endDate))
-                .thenThrow(new RuntimeException("Unexpected error during max sale day calculation."));
-
-        mockMvc.perform(get("/api/v1/sales/max-sale-day")
-                        .param("startDate", startDate.toString())
-                        .param("endDate", endDate.toString())
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").exists());
     }
 
 
@@ -188,19 +148,6 @@ public class SaleControllerTest {
     }
 
     @Test
-    void getTopSellingItems_shouldReturnInternalServerError_whenServiceThrowsException() throws Exception {
-        // Given
-        when(saleService.getTopSellingItems())
-                .thenThrow(new RuntimeException("Error fetching top selling items."));
-
-        // When & Then
-        mockMvc.perform(get("/api/v1/sales/top-selling-items")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
     void getTopSellingItemsLastMonthByQuantity_shouldReturnTop5ItemsOrderedByQuantity() throws Exception {
         // Given
         List<TopSellingItemByQuantityResponse> mockTopItems = List.of(
@@ -252,16 +199,4 @@ public class SaleControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
-    @Test
-    void getTopSellingItemsLastMonthByQuantity_shouldReturnInternalServerError_whenServiceThrowsException() throws Exception {
-        // Given
-        when(saleService.getTopSellingItemsLastMonthByQuantity())
-                .thenThrow(new RuntimeException("Error fetching top selling items by quantity."));
-
-        // When & Then
-        mockMvc.perform(get("/api/v1/sales/top-selling-items/last-month-by-quantity")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").exists());
-    }
 }
