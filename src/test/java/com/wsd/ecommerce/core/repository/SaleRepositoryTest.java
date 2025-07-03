@@ -31,7 +31,6 @@ public class SaleRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        // Clear database before each test
         entityManager.clear();
         entityManager.getEntityManager().createQuery("DELETE FROM SaleItem").executeUpdate();
         entityManager.getEntityManager().createQuery("DELETE FROM Sale").executeUpdate();
@@ -64,27 +63,22 @@ public class SaleRepositoryTest {
 
     @Test
     void findBySaleDateBetween_shouldReturnSalesForGivenDay() {
-        // Given
         LocalDate testDate = LocalDate.now();
         LocalDateTime startOfDay = testDate.atStartOfDay();
         LocalDateTime endOfDay = testDate.plusDays(1).atStartOfDay();
 
-        // Sales for today
         Sale sale1 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), startOfDay.plusHours(9), new BigDecimal("100.00"), "COMPLETED");
         Sale sale2 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), startOfDay.plusHours(14), new BigDecimal("50.00"), "COMPLETED");
         entityManager.persist(sale1);
         entityManager.persist(sale2);
 
-        // Sale for yesterday (should not be included)
         Sale saleYesterday = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), testDate.minusDays(1).atStartOfDay().plusHours(10), new BigDecimal("200.00"), "COMPLETED");
         entityManager.persist(saleYesterday);
 
         entityManager.flush();
 
-        // When
         List<Sale> sales = saleRepository.findBySaleDateBetween(startOfDay, endOfDay);
 
-        // Then
         assertNotNull(sales);
         assertEquals(2, sales.size());
         assertTrue(sales.stream().anyMatch(s -> s.getSaleId().equals(sale1.getSaleId())));
@@ -94,23 +88,18 @@ public class SaleRepositoryTest {
 
     @Test
     void findBySaleDateBetween_shouldReturnEmptyList_whenNoSalesForGivenDay() {
-        // Given: No sales for today have been persisted
-
-        LocalDate testDate = LocalDate.now().plusDays(5); // A day with no sales
+        LocalDate testDate = LocalDate.now().plusDays(5);
         LocalDateTime startOfDay = testDate.atStartOfDay();
         LocalDateTime endOfDay = testDate.plusDays(1).atStartOfDay();
 
-        // When
         List<Sale> sales = saleRepository.findBySaleDateBetween(startOfDay, endOfDay);
 
-        // Then
         assertNotNull(sales);
         assertTrue(sales.isEmpty());
     }
 
     @Test
     void findBySaleDateBetween_shouldHandleSalesAtStartAndEndOfDay() {
-        // Given
         LocalDate testDate = LocalDate.now();
         LocalDateTime startOfDay = testDate.atStartOfDay();
         LocalDateTime endOfDay = testDate.plusDays(1).atStartOfDay();
@@ -121,10 +110,8 @@ public class SaleRepositoryTest {
         entityManager.persist(saleJustBeforeEnd);
         entityManager.flush();
 
-        // When
         List<Sale> sales = saleRepository.findBySaleDateBetween(startOfDay, endOfDay);
 
-        // Then
         assertNotNull(sales);
         assertEquals(2, sales.size());
         assertTrue(sales.stream().anyMatch(s -> s.getSaleId().equals(saleAtStart.getSaleId())));

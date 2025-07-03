@@ -8,7 +8,5 @@ import java.util.List;
 
 public interface WishlistService {
 
-    List<WishlistProduct> getWishlistByCustomerId(String customerId);
-
     WishlistProductResponse getWishlistResponseByCustomerId(String customerId);
 }
