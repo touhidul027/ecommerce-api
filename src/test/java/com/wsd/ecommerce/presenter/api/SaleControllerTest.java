@@ -2,6 +2,7 @@ package com.wsd.ecommerce.presenter.api;
 
 import com.wsd.ecommerce.core.service.SaleService;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemByQuantityResponse;
 import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.junit.jupiter.api.Test;
@@ -194,6 +195,71 @@ public class SaleControllerTest {
 
         // When & Then
         mockMvc.perform(get("/api/v1/sales/top-selling-items")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void getTopSellingItemsLastMonthByQuantity_shouldReturnTop5ItemsOrderedByQuantity() throws Exception {
+        // Given
+        List<TopSellingItemByQuantityResponse> mockTopItems = List.of(
+                new TopSellingItemByQuantityResponse("prodX", "Product X", 500L),
+                new TopSellingItemByQuantityResponse("prodY", "Product Y", 400L),
+                new TopSellingItemByQuantityResponse("prodZ", "Product Z", 300L),
+                new TopSellingItemByQuantityResponse("prodA", "Product A", 200L),
+                new TopSellingItemByQuantityResponse("prodB", "Product B", 100L)
+        );
+        when(saleService.getTopSellingItemsLastMonthByQuantity()).thenReturn(mockTopItems);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items/last-month-by-quantity")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].productId").value("prodX"))
+                .andExpect(jsonPath("$[0].totalQuantitySold").value(500))
+                .andExpect(jsonPath("$.length()").value(5));
+    }
+
+    @Test
+    void getTopSellingItemsLastMonthByQuantity_shouldReturnFewerItems_whenLessThan5SalesExist() throws Exception {
+        // Given
+        List<TopSellingItemByQuantityResponse> mockTopItems = List.of(
+                new TopSellingItemByQuantityResponse("prodX", "Product X", 50L),
+                new TopSellingItemByQuantityResponse("prodY", "Product Y", 30L)
+        );
+        when(saleService.getTopSellingItemsLastMonthByQuantity()).thenReturn(mockTopItems);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items/last-month-by-quantity")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void getTopSellingItemsLastMonthByQuantity_shouldReturnEmptyList_whenNoSalesExist() throws Exception {
+        // Given
+        when(saleService.getTopSellingItemsLastMonthByQuantity()).thenReturn(Collections.emptyList());
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items/last-month-by-quantity")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getTopSellingItemsLastMonthByQuantity_shouldReturnInternalServerError_whenServiceThrowsException() throws Exception {
+        // Given
+        when(saleService.getTopSellingItemsLastMonthByQuantity())
+                .thenThrow(new RuntimeException("Error fetching top selling items by quantity."));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items/last-month-by-quantity")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").exists());

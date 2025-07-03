@@ -1,5 +1,6 @@
 package com.wsd.ecommerce.core.service;
 
+import com.wsd.ecommerce.core.dto.ProductQuantitySummary;
 import com.wsd.ecommerce.core.dto.ProductSaleSummary;
 import com.wsd.ecommerce.core.entity.Product;
 import com.wsd.ecommerce.core.entity.Sale;
@@ -7,6 +8,7 @@ import com.wsd.ecommerce.core.repository.ProductRepository;
 import com.wsd.ecommerce.core.repository.SaleItemRepository;
 import com.wsd.ecommerce.core.repository.SaleRepository;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemByQuantityResponse;
 import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -130,5 +133,49 @@ public class SaleService {
                 .limit(5) // Take top 5
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Returns the top 5 selling items of the last month based on total number of units sold.
+     *
+     * @return A list of TopSellingItemByQuantityResponse objects.
+     */
+    public List<TopSellingItemByQuantityResponse> getTopSellingItemsLastMonthByQuantity() {
+        // Calculate the date range for the last month
+        YearMonth lastMonth = YearMonth.now().minusMonths(1);
+        LocalDateTime startOfLastMonth = lastMonth.atDay(1).atStartOfDay();
+        LocalDateTime endOfLastMonth = lastMonth.atEndOfMonth().plusDays(1).atStartOfDay(); // Exclusive end
+
+        // 1. Get aggregated quantity sold data from the repository for the last month
+        List<ProductQuantitySummary> productQuantitySummaries =
+                saleItemRepository.findTotalQuantitySoldByProductAndDateRange(startOfLastMonth, endOfLastMonth);
+
+        if (productQuantitySummaries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Extract all product IDs from the summaries
+        List<String> productIds = productQuantitySummaries.stream()
+                .map(ProductQuantitySummary::getProductId)
+                .collect(Collectors.toList());
+
+        // 3. Fetch product details (names) in a single batch call
+        List<Product> products = productRepository.findAllByProductId(productIds);
+
+        // 4. Create a map for quick lookup of product names by ID
+        Map<String, String> productNamesMap = products.stream()
+                .collect(Collectors.toMap(Product::getProductId, Product::getName));
+
+        // 5. Map summaries to TopSellingItemByQuantityResponse, enrich with product name, sort, and limit
+        return productQuantitySummaries.stream()
+                .map(summary -> new TopSellingItemByQuantityResponse(
+                        summary.getProductId(),
+                        productNamesMap.getOrDefault(summary.getProductId(), "Unknown Product"),
+                        summary.getTotalQuantity()
+                ))
+                .sorted(Comparator.comparing(TopSellingItemByQuantityResponse::getTotalQuantitySold).reversed()) // Sort by quantity descending
+                .limit(5) // Take top 5
+                .collect(Collectors.toList());
+    }
+
 }
 

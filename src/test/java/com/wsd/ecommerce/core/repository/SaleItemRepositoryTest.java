@@ -1,5 +1,6 @@
 package com.wsd.ecommerce.core.repository;
 
+import com.wsd.ecommerce.core.dto.ProductQuantitySummary;
 import com.wsd.ecommerce.core.dto.ProductSaleSummary;
 import com.wsd.ecommerce.core.entity.Customer;
 import com.wsd.ecommerce.core.entity.Product;
@@ -12,7 +13,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +36,8 @@ public class SaleItemRepositoryTest {
     private Product productC;
     private Sale sale1;
     private Sale sale2;
+    private Sale saleLastMonth;
+    private Sale saleCurrentMonth;
 
     @BeforeEach
     void setUp() {
@@ -59,6 +64,16 @@ public class SaleItemRepositoryTest {
         sale2 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), LocalDateTime.now(), new BigDecimal("45.00"), "COMPLETED");
         entityManager.persist(sale1);
         entityManager.persist(sale2);
+
+        // Sales for last month and current month for quantity tests
+        YearMonth lastMonth = YearMonth.now().minusMonths(1);
+        YearMonth currentMonth = YearMonth.now();
+
+        saleLastMonth = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), lastMonth.atDay(15).atStartOfDay().plusHours(10), BigDecimal.ZERO, "COMPLETED");
+        entityManager.persist(saleLastMonth);
+
+        saleCurrentMonth = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), currentMonth.atDay(5).atStartOfDay().plusHours(10), BigDecimal.ZERO, "COMPLETED");
+        entityManager.persist(saleCurrentMonth);
 
         entityManager.flush();
     }
@@ -136,6 +151,78 @@ public class SaleItemRepositoryTest {
         ProductSaleSummary summaryA = summaries.get(0);
         assertEquals(productA.getProductId(), summaryA.getProductId());
         assertEquals(new BigDecimal("10.00"), summaryA.getTotalRevenue());
+    }
+
+    @Test
+    void findTotalQuantitySoldByProductAndDateRange_shouldReturnCorrectQuantitiesForLastMonth() {
+        // Given
+        LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
+        LocalDateTime endOfLastMonth = YearMonth.now().minusMonths(1).atEndOfMonth().plusDays(1).atStartOfDay();
+
+        // Sale items for last month
+        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productA.getProductId(), 5, productA.getPrice(), new BigDecimal("50.00")));
+        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productB.getProductId(), 3, productB.getPrice(), new BigDecimal("60.00")));
+        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productA.getProductId(), 2, productA.getPrice(), new BigDecimal("20.00"))); // Product A total: 7
+        entityManager.flush();
+
+        // Sale items for current month (should be excluded)
+        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleCurrentMonth.getSaleId(), productA.getProductId(), 10, productA.getPrice(), new BigDecimal("100.00")));
+        entityManager.flush();
+
+        // When
+        List<ProductQuantitySummary> summaries = saleItemRepository.findTotalQuantitySoldByProductAndDateRange(startOfLastMonth, endOfLastMonth);
+
+        // Then
+        assertNotNull(summaries);
+        assertEquals(2, summaries.size()); // Only products A and B from last month
+
+        ProductQuantitySummary summaryA = summaries.stream()
+                .filter(s -> s.getProductId().equals(productA.getProductId()))
+                .findFirst().orElse(null);
+        assertNotNull(summaryA);
+        assertEquals(7L, summaryA.getTotalQuantity()); // 5 + 2 = 7
+
+        ProductQuantitySummary summaryB = summaries.stream()
+                .filter(s -> s.getProductId().equals(productB.getProductId()))
+                .findFirst().orElse(null);
+        assertNotNull(summaryB);
+        assertEquals(3L, summaryB.getTotalQuantity());
+    }
+
+    @Test
+    void findTotalQuantitySoldByProductAndDateRange_shouldReturnEmptyList_whenNoSalesInDateRange() {
+        // Given: No sales items for the specified range
+
+        LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
+        LocalDateTime start = threeMonthsAgo.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime end = threeMonthsAgo.withDayOfMonth(threeMonthsAgo.lengthOfMonth()).plusDays(1).atStartOfDay();
+
+        // When
+        List<ProductQuantitySummary> summaries = saleItemRepository.findTotalQuantitySoldByProductAndDateRange(start, end);
+
+        // Then
+        assertNotNull(summaries);
+        assertTrue(summaries.isEmpty());
+    }
+
+    @Test
+    void findTotalQuantitySoldByProductAndDateRange_shouldHandleSingleItemInDateRange() {
+        // Given
+        LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
+        LocalDateTime endOfLastMonth = YearMonth.now().minusMonths(1).atEndOfMonth().plusDays(1).atStartOfDay();
+
+        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productC.getProductId(), 15, productC.getPrice(), new BigDecimal("75.00")));
+        entityManager.flush();
+
+        // When
+        List<ProductQuantitySummary> summaries = saleItemRepository.findTotalQuantitySoldByProductAndDateRange(startOfLastMonth, endOfLastMonth);
+
+        // Then
+        assertNotNull(summaries);
+        assertEquals(1, summaries.size());
+        ProductQuantitySummary summaryC = summaries.get(0);
+        assertEquals(productC.getProductId(), summaryC.getProductId());
+        assertEquals(15L, summaryC.getTotalQuantity());
     }
 }
 
