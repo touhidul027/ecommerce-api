@@ -22,3 +22,10 @@ spring:
 
 server:
   port: 8080
+
+logging:
+  config: classpath:log/logback-dev.xml
+
+custom:
+  log:
+    path: C:\_changes\_git_hub\logs
