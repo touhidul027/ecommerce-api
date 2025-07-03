@@ -1,27 +1,5 @@
 spring:
   application:
     name: Ecommerce API
-
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce}  # Fallback: localhost
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}                          # Fallback: 'postgres'
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}                          # Fallback: 'postgres'
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: none
-    defer-datasource-initialization: false
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-  sql:
-    init:
-      mode: never  # ✅ disable built-in data.sql runner
-
-server:
-  port: 8080
+  profiles:
+    active: dev  # Default profile
