@@ -26,6 +26,12 @@ VALUES
     ('sale-002', 'cust-002', NOW()::DATE + INTERVAL '14 hours', 635.00, 'COMPLETED'),
     ('sale-003', 'cust-001', (NOW()::DATE - INTERVAL '1 day') + INTERVAL '11 hours', 1500.00, 'COMPLETED'),
     ('sale-004', 'cust-002', (NOW()::DATE - INTERVAL '2 days') + INTERVAL '9 hours', 120.00, 'COMPLETED');
+INSERT INTO public.sales (sale_id, customer_id, sale_date, total_amount, status) VALUES ('sale-005', 'cust-001', '2025-06-03 10:00:00.000000', 1620.00, 'COMPLETED');
+INSERT INTO public.sales (sale_id, customer_id, sale_date, total_amount, status) VALUES ('sale-006', 'cust-002', '2025-06-03 14:00:00.000000', 635.00, 'COMPLETED');
+INSERT INTO public.sales (sale_id, customer_id, sale_date, total_amount, status) VALUES ('sale-007', 'cust-001', '2025-06-02 11:00:00.000000', 1500.00, 'COMPLETED');
+INSERT INTO public.sales (sale_id, customer_id, sale_date, total_amount, status) VALUES ('sale-008', 'cust-002', '2025-06-01 09:00:00.000000', 120.00, 'COMPLETED');
+
+
 
 -- Insert Sale Items
 -- Sale 1 Items
@@ -49,3 +55,10 @@ VALUES
 INSERT INTO sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total)
 VALUES
     ('item-006', 'sale-004', 'prod-002', 1, 120.00, 120.00);
+
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-007', 'sale-005', 'prod-001', 1, 1500.00, 1500.00);
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-008', 'sale-005', 'prod-002', 1, 120.00, 120.00);
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-009', 'sale-005', 'prod-003', 1, 35.00, 35.00);
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-010', 'sale-006', 'prod-004', 1, 600.00, 600.00);
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-011', 'sale-006', 'prod-001', 1, 1500.00, 1500.00);
+INSERT INTO public.sale_items (sale_item_id, sale_id, product_id, quantity, unit_price_at_sale, item_total) VALUES ('item-012', 'sale-006', 'prod-002', 1, 120.00, 120.00);
