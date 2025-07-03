@@ -3,6 +3,7 @@ package com.wsd.ecommerce.core.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -55,6 +56,8 @@ public abstract class BaseLoggerAspect {
                 sb.append(" - ");
             } else {
                 if (index > 0) sb.append(" | ");
+                objectMapper.registerModule(new JavaTimeModule()); // This is essential
+
                 String jsonParam = objectMapper.writeValueAsString(param);
                 sb.append(jsonParam);
             }
