@@ -28,8 +28,7 @@ public class WishlistServiceImpl extends BaseService implements WishlistService 
     private final WishListRepository wishListRepository;
     private final ProductRepository productRepository;
 
-    @Override
-    public List<WishlistProduct> getWishlistByCustomerId(String customerId) {
+    private List<WishlistProduct> getWishlistByCustomerId(String customerId) {
         List<WishList> wishListItems = wishListRepository.findByCustomerId(customerId);
 
         List<String> productIds = wishListItems.stream()
@@ -47,11 +46,9 @@ public class WishlistServiceImpl extends BaseService implements WishlistService 
     public WishlistProductResponse getWishlistResponseByCustomerId(String customerId) {
         List<WishlistProduct> products = this.getWishlistByCustomerId(customerId);
 
-        logger.debug("Attempting to retrieve wishlist for customer");
-        logger.trace("Attempting to retrieve wishlist for customer ID: {}", customerId);
-        logger.info("Successfully found customer with ID: {}", customerId); // Info log
-        logger.warn("WishList with Customer with ID {} not found.", customerId); // Warn log
-        logger.error("Products Not exist but Wishlist associated products id found. Products IDs: {}.", products.toString());
+        logger.trace(String.format("Attempting to retrieve wishlist for customer ID: %s", customerId));
+        logger.trace(String.format("Products: %s", writeJsonString(products)));
+        logger.error(String.format("WishList with Customer with ID %s not found.", customerId));
 
         BigDecimal totalPrice = products.stream()
                 .map(WishlistProduct::getPrice)
