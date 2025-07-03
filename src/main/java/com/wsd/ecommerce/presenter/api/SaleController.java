@@ -3,6 +3,7 @@ package com.wsd.ecommerce.presenter.api;
 
 import com.wsd.ecommerce.core.service.SaleService;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemByQuantityResponse;
 import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +86,24 @@ public class SaleController {
         } catch (Exception e) {
             System.err.println("Error retrieving top selling items: " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to retrieve top selling items.", e);
+        }
+    }
+
+
+    /**
+     * GET /api/v1/sales/top-selling-items/last-month-by-quantity
+     * Returns the top 5 selling items of the last month based on total number of units sold.
+     *
+     * @return A list of TopSellingItemByQuantityResponse objects.
+     */
+    @GetMapping("/top-selling-items/last-month-by-quantity")
+    public ResponseEntity<List<TopSellingItemByQuantityResponse>> getTopSellingItemsLastMonthByQuantity() {
+        try {
+            List<TopSellingItemByQuantityResponse> topItems = saleService.getTopSellingItemsLastMonthByQuantity();
+            return ResponseEntity.ok(topItems);
+        } catch (Exception e) {
+            System.err.println("Error retrieving top selling items by quantity for last month: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to retrieve top selling items by quantity for last month.", e);
         }
     }
 }
