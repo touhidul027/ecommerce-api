@@ -3,11 +3,14 @@ package com.wsd.ecommerce.core.repository;
 import com.wsd.ecommerce.core.entity.Customer;
 import com.wsd.ecommerce.core.entity.Product;
 import com.wsd.ecommerce.core.entity.Sale;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,6 +21,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SaleRepositoryTest {
 
     @Autowired
@@ -29,6 +35,21 @@ public class SaleRepositoryTest {
     private Customer customer;
     private Product product;
 
+
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("ecommerce")
+            .withUsername("postgres")
+            .withPassword("postgres");
+
+    @DynamicPropertySource
+    static void overrideProperties(DynamicPropertyRegistry registry) {
+        postgres.start();
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+
     @BeforeEach
     void setUp() {
         entityManager.clear();
@@ -38,7 +59,8 @@ public class SaleRepositoryTest {
         entityManager.getEntityManager().createQuery("DELETE FROM Product").executeUpdate();
 
         // Persist common test data
-        Customer customer = Customer.builder()
+         customer = Customer.builder()
+                //.id(1L)
                 .customerId("cust-001")
                 .name("John Doe")
                 .email("john.doe@example.com")
@@ -47,7 +69,8 @@ public class SaleRepositoryTest {
 
         entityManager.persist(customer);
 
-        Product product = Product.builder()
+         product = Product.builder()
+                //.id(1L)
                 .productId("prod-001")
                 .name("Smartphone X")
                 .description("Latest model with advanced camera")
@@ -67,12 +90,33 @@ public class SaleRepositoryTest {
         LocalDateTime startOfDay = testDate.atStartOfDay();
         LocalDateTime endOfDay = testDate.plusDays(1).atStartOfDay();
 
-        Sale sale1 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), startOfDay.plusHours(9), new BigDecimal("100.00"), "COMPLETED");
-        Sale sale2 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), startOfDay.plusHours(14), new BigDecimal("50.00"), "COMPLETED");
+        Sale sale1 = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(startOfDay.plusHours(9))
+                .totalAmount(new BigDecimal("100.00"))
+                .status("COMPLETED")
+                .build();
+
+        Sale sale2 = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(startOfDay.plusHours(14))
+                .totalAmount(new BigDecimal("50.00"))
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(sale1);
         entityManager.persist(sale2);
 
-        Sale saleYesterday = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), testDate.minusDays(1).atStartOfDay().plusHours(10), new BigDecimal("200.00"), "COMPLETED");
+        Sale saleYesterday = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(testDate.minusDays(1).atStartOfDay().plusHours(10))
+                .totalAmount(new BigDecimal("200.00"))
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(saleYesterday);
 
         entityManager.flush();
@@ -104,8 +148,22 @@ public class SaleRepositoryTest {
         LocalDateTime startOfDay = testDate.atStartOfDay();
         LocalDateTime endOfDay = testDate.plusDays(1).atStartOfDay();
 
-        Sale saleAtStart = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), startOfDay, new BigDecimal("10.00"), "COMPLETED");
-        Sale saleJustBeforeEnd = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), endOfDay.minusNanos(1), new BigDecimal("20.00"), "COMPLETED");
+        Sale saleAtStart = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(startOfDay)
+                .totalAmount(new BigDecimal("10.00"))
+                .status("COMPLETED")
+                .build();
+
+        Sale saleJustBeforeEnd = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(endOfDay.minusNanos(1))
+                .totalAmount(new BigDecimal("20.00"))
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(saleAtStart);
         entityManager.persist(saleJustBeforeEnd);
         entityManager.flush();

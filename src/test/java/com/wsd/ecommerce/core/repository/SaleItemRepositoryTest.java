@@ -6,11 +6,14 @@ import com.wsd.ecommerce.core.entity.Customer;
 import com.wsd.ecommerce.core.entity.Product;
 import com.wsd.ecommerce.core.entity.Sale;
 import com.wsd.ecommerce.core.entity.SaleItem;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,6 +24,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DataJpaTest
 public class SaleItemRepositoryTest {
 
@@ -39,6 +45,19 @@ public class SaleItemRepositoryTest {
     private Sale saleLastMonth;
     private Sale saleCurrentMonth;
 
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("ecommerce")
+            .withUsername("postgres")
+            .withPassword("postgres");
+
+    @DynamicPropertySource
+    static void overrideProperties(DynamicPropertyRegistry registry) {
+        postgres.start();
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
     @BeforeEach
     void setUp() {
         // Clear database before each test
@@ -49,19 +68,65 @@ public class SaleItemRepositoryTest {
         entityManager.getEntityManager().createQuery("DELETE FROM Product").executeUpdate();
 
         // Persist common test data
-        customer = new Customer(1L, UUID.randomUUID().toString(), "Test Customer", "test@example.com", "123 Main St");
+        customer = Customer.builder()
+
+                .customerId(UUID.randomUUID().toString())
+                .name("Test Customer")
+                .email("test@example.com")
+                .address("123 Main St")
+                .build();
         entityManager.persist(customer);
 
-        productA = new Product(1L, "prod3", "Product A", "Desc C", BigDecimal.ZERO, "Cat C", LocalDateTime.now());
-        productB = new Product(2L, "prod1", "Product B", "Desc A", BigDecimal.ZERO, "Cat A", LocalDateTime.now());
-        productC = new Product(3L, "prod6", "Product C", "Desc F", BigDecimal.ZERO, "Cat F", LocalDateTime.now());
+        productA = Product.builder()
+
+                .productId("prod3")
+                .name("Product A")
+                .description("Desc C")
+                .price(BigDecimal.ZERO)
+                .category("Cat C")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        productB = Product.builder()
+
+                .productId("prod1")
+                .name("Product B")
+                .description("Desc A")
+                .price(BigDecimal.ZERO)
+                .category("Cat A")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        productC = Product.builder()
+
+                .productId("prod6")
+                .name("Product C")
+                .description("Desc F")
+                .price(BigDecimal.ZERO)
+                .category("Cat F")
+                .createdAt(LocalDateTime.now())
+                .build();
 
         entityManager.persist(productA);
         entityManager.persist(productB);
         entityManager.persist(productC);
 
-        sale1 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), LocalDateTime.now().minusDays(1), new BigDecimal("30.00"), "COMPLETED");
-        sale2 = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), LocalDateTime.now(), new BigDecimal("45.00"), "COMPLETED");
+        sale1 = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(LocalDateTime.now().minusDays(1))
+                .totalAmount(new BigDecimal("30.00"))
+                .status("COMPLETED")
+                .build();
+
+        sale2 = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(LocalDateTime.now())
+                .totalAmount(new BigDecimal("45.00"))
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(sale1);
         entityManager.persist(sale2);
 
@@ -69,10 +134,24 @@ public class SaleItemRepositoryTest {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
         YearMonth currentMonth = YearMonth.now();
 
-        saleLastMonth = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), lastMonth.atDay(15).atStartOfDay().plusHours(10), BigDecimal.ZERO, "COMPLETED");
+        saleLastMonth = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(lastMonth.atDay(15).atStartOfDay().plusHours(10))
+                .totalAmount(BigDecimal.ZERO)
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(saleLastMonth);
 
-        saleCurrentMonth = new Sale(UUID.randomUUID().toString(), customer.getCustomerId(), currentMonth.atDay(5).atStartOfDay().plusHours(10), BigDecimal.ZERO, "COMPLETED");
+        saleCurrentMonth = Sale.builder()
+                .saleId(UUID.randomUUID().toString())
+                .customerId(customer.getCustomerId())
+                .saleDate(currentMonth.atDay(5).atStartOfDay().plusHours(10))
+                .totalAmount(BigDecimal.ZERO)
+                .status("COMPLETED")
+                .build();
+
         entityManager.persist(saleCurrentMonth);
 
         entityManager.flush();
@@ -82,12 +161,42 @@ public class SaleItemRepositoryTest {
     void findTotalSalesByProduct_shouldReturnCorrectAggregatedSales() {
         // Given
         // Sale 1: Product A (10.00 * 2 = 20.00), Product B (20.00 * 1 = 20.00)
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), sale1.getSaleId(), productA.getProductId(), 2, productA.getPrice(), new BigDecimal("20.00")));
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), sale1.getSaleId(), productB.getProductId(), 1, productB.getPrice(), new BigDecimal("20.00")));
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(sale1.getSaleId())
+                .productId(productA.getProductId())
+                .quantity(2)
+                .unitPriceAtSale(productA.getPrice())
+                .itemTotal(new BigDecimal("20.00"))
+                .build());
 
-        // Sale 2: Product A (10.00 * 1 = 10.00), Product C (5.00 * 3 = 15.00)
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), sale2.getSaleId(), productA.getProductId(), 1, productA.getPrice(), new BigDecimal("10.00")));
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), sale2.getSaleId(), productC.getProductId(), 3, productC.getPrice(), new BigDecimal("15.00")));
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(sale1.getSaleId())
+                .productId(productB.getProductId())
+                .quantity(1)
+                .unitPriceAtSale(productB.getPrice())
+                .itemTotal(new BigDecimal("20.00"))
+                .build());
+
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(sale2.getSaleId())
+                .productId(productA.getProductId())
+                .quantity(1)
+                .unitPriceAtSale(productA.getPrice())
+                .itemTotal(new BigDecimal("10.00"))
+                .build());
+
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(sale2.getSaleId())
+                .productId(productC.getProductId())
+                .quantity(3)
+                .unitPriceAtSale(productC.getPrice())
+                .itemTotal(new BigDecimal("15.00"))
+                .build());
+
         entityManager.flush();
 
         // Expected totals:
@@ -139,7 +248,16 @@ public class SaleItemRepositoryTest {
     @Test
     void findTotalSalesByProduct_shouldHandleSingleSaleItem() {
         // Given
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), sale1.getSaleId(), productA.getProductId(), 1, productA.getPrice(), new BigDecimal("10.00")));
+        entityManager.persist(
+                 SaleItem.builder()
+                        .saleItemId(UUID.randomUUID().toString())
+                        .saleId(sale1.getSaleId())
+                        .productId(productA.getProductId())
+                        .quantity(1)
+                        .unitPriceAtSale(productA.getPrice())
+                        .itemTotal(new BigDecimal("10.00"))
+                        .build()
+        );
         entityManager.flush();
 
         // When
@@ -160,13 +278,45 @@ public class SaleItemRepositoryTest {
         LocalDateTime endOfLastMonth = YearMonth.now().minusMonths(1).atEndOfMonth().plusDays(1).atStartOfDay();
 
         // Sale items for last month
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productA.getProductId(), 5, productA.getPrice(), new BigDecimal("50.00")));
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productB.getProductId(), 3, productB.getPrice(), new BigDecimal("60.00")));
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productA.getProductId(), 2, productA.getPrice(), new BigDecimal("20.00"))); // Product A total: 7
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(saleLastMonth.getSaleId())
+                .productId(productA.getProductId())
+                .quantity(5)
+                .unitPriceAtSale(productA.getPrice())
+                .itemTotal(new BigDecimal("50.00"))
+                .build());
+
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(saleLastMonth.getSaleId())
+                .productId(productB.getProductId())
+                .quantity(3)
+                .unitPriceAtSale(productB.getPrice())
+                .itemTotal(new BigDecimal("60.00"))
+                .build());
+
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(saleLastMonth.getSaleId())
+                .productId(productA.getProductId())
+                .quantity(2)
+                .unitPriceAtSale(productA.getPrice())
+                .itemTotal(new BigDecimal("20.00"))
+                .build());
+
         entityManager.flush();
 
         // Sale items for current month (should be excluded)
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleCurrentMonth.getSaleId(), productA.getProductId(), 10, productA.getPrice(), new BigDecimal("100.00")));
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(saleCurrentMonth.getSaleId())
+                .productId(productA.getProductId())
+                .quantity(10)
+                .unitPriceAtSale(productA.getPrice())
+                .itemTotal(new BigDecimal("100.00"))
+                .build());
+
         entityManager.flush();
 
         // When
@@ -211,7 +361,15 @@ public class SaleItemRepositoryTest {
         LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
         LocalDateTime endOfLastMonth = YearMonth.now().minusMonths(1).atEndOfMonth().plusDays(1).atStartOfDay();
 
-        entityManager.persist(new SaleItem(UUID.randomUUID().toString(), saleLastMonth.getSaleId(), productC.getProductId(), 15, productC.getPrice(), new BigDecimal("75.00")));
+        entityManager.persist(SaleItem.builder()
+                .saleItemId(UUID.randomUUID().toString())
+                .saleId(saleLastMonth.getSaleId())
+                .productId(productC.getProductId())
+                .quantity(15)
+                .unitPriceAtSale(productC.getPrice())
+                .itemTotal(new BigDecimal("75.00"))
+                .build());
+
         entityManager.flush();
 
         // When
