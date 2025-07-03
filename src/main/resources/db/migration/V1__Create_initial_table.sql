@@ -1,3 +1,30 @@
+-- Drop Flyway metadata table
+DROP TABLE IF EXISTS flyway_schema_history;
+
+-- Drop tables in dependency order
+DROP TABLE IF EXISTS sale_items;
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS wish_list;
+DROP TABLE IF EXISTS product;
+DROP TABLE IF EXISTS customers;
+
+CREATE TABLE IF NOT EXISTS product (
+    id SERIAL PRIMARY KEY,
+    product_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000),
+    price NUMERIC(10,2) NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+    );
+
+CREATE TABLE IF NOT EXISTS wish_list (
+     id SERIAL PRIMARY KEY,
+     customer_id VARCHAR(255) NOT NULL,
+    product_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+    );
+
 CREATE TABLE IF NOT EXISTS customers (
     customer_id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -5,25 +32,6 @@ CREATE TABLE IF NOT EXISTS customers (
     address VARCHAR(255)
     );
 
-CREATE TABLE IF NOT EXISTS products (
-    product_id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    price NUMERIC(19, 2) NOT NULL,
-    category VARCHAR(255),
-    sku VARCHAR(255) UNIQUE
-    );
-
-CREATE TABLE IF NOT EXISTS wishlist_items (
-    wishlist_item_id VARCHAR(255) PRIMARY KEY,
-    customer_id VARCHAR(255) NOT NULL,
-    product_id VARCHAR(255) NOT NULL,
-    added_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    CONSTRAINT fk_wishlist_customer FOREIGN KEY (customer_id) REFERENCES customers (customer_id),
-    CONSTRAINT fk_wishlist_product FOREIGN KEY (product_id) REFERENCES products (product_id)
-    );
-
--- New tables for sales
 CREATE TABLE IF NOT EXISTS sales (
     sale_id VARCHAR(255) PRIMARY KEY,
     customer_id VARCHAR(255) NOT NULL,
