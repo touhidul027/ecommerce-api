@@ -3,6 +3,7 @@ package com.wsd.ecommerce.presenter.api;
 
 import com.wsd.ecommerce.core.service.SaleService;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/sales")
@@ -68,4 +70,21 @@ public class SaleController {
         }
     }
 
+
+    /**
+     * GET /api/v1/sales/top-selling-items
+     * Returns the top 5 selling items of all time based on total sale amount.
+     *
+     * @return A list of TopSellingItemResponse objects.
+     */
+    @GetMapping("/top-selling-items")
+    public ResponseEntity<List<TopSellingItemResponse>> getTopSellingItems() {
+        try {
+            List<TopSellingItemResponse> topItems = saleService.getTopSellingItems();
+            return ResponseEntity.ok(topItems);
+        } catch (Exception e) {
+            System.err.println("Error retrieving top selling items: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to retrieve top selling items.", e);
+        }
+    }
 }

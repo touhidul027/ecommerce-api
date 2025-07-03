@@ -1,8 +1,13 @@
 package com.wsd.ecommerce.core.service;
 
+import com.wsd.ecommerce.core.dto.ProductSaleSummary;
+import com.wsd.ecommerce.core.entity.Product;
 import com.wsd.ecommerce.core.entity.Sale;
+import com.wsd.ecommerce.core.repository.ProductRepository;
+import com.wsd.ecommerce.core.repository.SaleItemRepository;
 import com.wsd.ecommerce.core.repository.SaleRepository;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,10 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +30,10 @@ public class SaleServiceTest {
 
     @Mock
     private SaleRepository saleRepository;
+    @Mock
+    private SaleItemRepository saleItemRepository;
+    @Mock
+    private ProductRepository productRepository;
 
     @InjectMocks
     private SaleService saleService;
@@ -180,5 +186,133 @@ public class SaleServiceTest {
         assertNotNull(response);
         assertEquals(LocalDate.of(2025, 6, 1), response.getMaxSaleDate());
         assertEquals(new BigDecimal("200.00"), response.getMaxSaleAmount());
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnTop5ItemsOrderedByRevenue() {
+        // Given
+        List<ProductSaleSummary> mockSummaries = Arrays.asList(
+                new ProductSaleSummary("prod1", new BigDecimal("5000.00")),
+                new ProductSaleSummary("prod2", new BigDecimal("1000.00")),
+                new ProductSaleSummary("prod3", new BigDecimal("7000.00")),
+                new ProductSaleSummary("prod4", new BigDecimal("2000.00")),
+                new ProductSaleSummary("prod5", new BigDecimal("3000.00")),
+                new ProductSaleSummary("prod6", new BigDecimal("4000.00"))
+        );
+        when(saleItemRepository.findTotalSalesByProduct()).thenReturn(mockSummaries);
+
+        // Mock product details for the top 5
+        when(productRepository.findAllByProductId(Arrays.asList("prod3", "prod1", "prod6", "prod5", "prod4")))
+                .thenReturn(Arrays.asList(
+                        new Product(1L, "prod3", "Product C", "Desc C", BigDecimal.ZERO, "Cat C", LocalDateTime.now()),
+                        new Product(2L, "prod1", "Product A", "Desc A", BigDecimal.ZERO, "Cat A", LocalDateTime.now()),
+                        new Product(3L, "prod6", "Product F", "Desc F", BigDecimal.ZERO, "Cat F", LocalDateTime.now()),
+                        new Product(4L, "prod5", "Product E", "Desc E", BigDecimal.ZERO, "Cat E", LocalDateTime.now()),
+                        new Product(5L, "prod4", "Product D", "Desc D", BigDecimal.ZERO, "Cat D", LocalDateTime.now())
+
+                ));
+
+        // When
+        List<TopSellingItemResponse> result = saleService.getTopSellingItems();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(5, result.size());
+
+        assertEquals("prod3", result.get(0).getProductId());
+        assertEquals(new BigDecimal("7000.00"), result.get(0).getTotalRevenue());
+        assertEquals("Product C", result.get(0).getProductName());
+
+        assertEquals("prod1", result.get(1).getProductId());
+        assertEquals(new BigDecimal("5000.00"), result.get(1).getTotalRevenue());
+        assertEquals("Product A", result.get(1).getProductName());
+
+        assertEquals("prod6", result.get(2).getProductId());
+        assertEquals(new BigDecimal("4000.00"), result.get(2).getTotalRevenue());
+        assertEquals("Product F", result.get(2).getProductName());
+
+        assertEquals("prod5", result.get(3).getProductId());
+        assertEquals(new BigDecimal("3000.00"), result.get(3).getTotalRevenue());
+        assertEquals("Product E", result.get(3).getProductName());
+
+        assertEquals("prod4", result.get(4).getProductId());
+        assertEquals(new BigDecimal("2000.00"), result.get(4).getTotalRevenue());
+        assertEquals("Product D", result.get(4).getProductName());
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnFewerThan5Items_whenTotalItemsAreLessThan5() {
+        // Given
+        List<ProductSaleSummary> mockSummaries = Arrays.asList(
+                new ProductSaleSummary("prod1", new BigDecimal("1000.00")),
+                new ProductSaleSummary("prod2", new BigDecimal("500.00"))
+        );
+        when(saleItemRepository.findTotalSalesByProduct()).thenReturn(mockSummaries);
+
+        when(productRepository.findAllByProductId(Arrays.asList("prod1", "prod2")))
+                .thenReturn(Arrays.asList(
+                        new Product(1L, "prod3", "Product C", "Desc C", BigDecimal.ZERO, "Cat C", LocalDateTime.now()),
+                        new Product(2L, "prod1", "Product A", "Desc A", BigDecimal.ZERO, "Cat A", LocalDateTime.now())
+                ));
+
+        // When
+        List<TopSellingItemResponse> result = saleService.getTopSellingItems();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("prod1", result.get(0).getProductId());
+        assertEquals("prod2", result.get(1).getProductId());
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnEmptyList_whenNoSalesItemsExist() {
+        // Given
+        when(saleItemRepository.findTotalSalesByProduct()).thenReturn(Collections.emptyList());
+
+        // When
+        List<TopSellingItemResponse> result = saleService.getTopSellingItems();
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getTopSellingItems_shouldHandleMissingProductDetailsGracefully() {
+        // Given a summary where one product detail might be missing
+        List<ProductSaleSummary> mockSummaries = Arrays.asList(
+                new ProductSaleSummary("prod1", new BigDecimal("100.00")),
+                new ProductSaleSummary("missingProd", new BigDecimal("200.00")) // This product will not be found
+        );
+        when(saleItemRepository.findTotalSalesByProduct()).thenReturn(mockSummaries);
+
+        // Only return details for prod1, simulate missing for missingProd
+        when(productRepository.findAllByProductId(Arrays.asList("missingProd", "prod1"))) // Order might vary, so check both
+                .thenReturn(Collections.singletonList(
+                        new Product(1L, "prod1", "Product A", "Desc A", BigDecimal.ZERO, "Cat A", LocalDateTime.now())
+                ));
+
+        // When
+        List<TopSellingItemResponse> result = saleService.getTopSellingItems();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(2, result.size()); // Both items should still be in the list
+
+        // Check the product that was found
+        Optional<TopSellingItemResponse> foundProduct = result.stream()
+                .filter(item -> item.getProductId().equals("prod1"))
+                .findFirst();
+        assertTrue(foundProduct.isPresent());
+        assertEquals("Product A", foundProduct.get().getProductName());
+
+        // Check the product that was missing
+        Optional<TopSellingItemResponse> missingProduct = result.stream()
+                .filter(item -> item.getProductId().equals("missingProd"))
+                .findFirst();
+        assertTrue(missingProduct.isPresent());
+        assertEquals("Unknown Product", missingProduct.get().getProductName()); // Assert placeholder
+        assertEquals(new BigDecimal("200.00"), missingProduct.get().getTotalRevenue()); // Revenue should still be correct
     }
 }
