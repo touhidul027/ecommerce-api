@@ -2,6 +2,7 @@ package com.wsd.ecommerce.presenter.api;
 
 import com.wsd.ecommerce.core.service.SaleService;
 import com.wsd.ecommerce.presenter.domain.response.MaxSaleDayResponse;
+import com.wsd.ecommerce.presenter.domain.response.TopSellingItemResponse;
 import com.wsd.ecommerce.presenter.domain.response.TotalSaleAmountResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -125,6 +128,72 @@ public class SaleControllerTest {
         mockMvc.perform(get("/api/v1/sales/max-sale-day")
                         .param("startDate", startDate.toString())
                         .param("endDate", endDate.toString())
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+
+    @Test
+    void getTopSellingItems_shouldReturnTop5Items_whenSalesExist() throws Exception {
+        // Given
+        List<TopSellingItemResponse> mockTopItems = List.of(
+                new TopSellingItemResponse("prodA", "Product A", new BigDecimal("10000.00")),
+                new TopSellingItemResponse("prodB", "Product B", new BigDecimal("8000.00")),
+                new TopSellingItemResponse("prodC", "Product C", new BigDecimal("5000.00")),
+                new TopSellingItemResponse("prodD", "Product D", new BigDecimal("3000.00")),
+                new TopSellingItemResponse("prodE", "Product E", new BigDecimal("1000.00"))
+        );
+        when(saleService.getTopSellingItems()).thenReturn(mockTopItems);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].productId").value("prodA"))
+                .andExpect(jsonPath("$[0].totalRevenue").value(10000.00))
+                .andExpect(jsonPath("$.length()").value(5)); // Ensure 5 items are returned
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnFewerItems_whenLessThan5SalesExist() throws Exception {
+        // Given
+        List<TopSellingItemResponse> mockTopItems = List.of(
+                new TopSellingItemResponse("prodA", "Product A", new BigDecimal("1000.00")),
+                new TopSellingItemResponse("prodB", "Product B", new BigDecimal("500.00"))
+        );
+        when(saleService.getTopSellingItems()).thenReturn(mockTopItems);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2)); // Ensure only 2 items are returned
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnEmptyList_whenNoSalesExist() throws Exception {
+        // Given
+        when(saleService.getTopSellingItems()).thenReturn(Collections.emptyList());
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0)); // Expect an empty array
+    }
+
+    @Test
+    void getTopSellingItems_shouldReturnInternalServerError_whenServiceThrowsException() throws Exception {
+        // Given
+        when(saleService.getTopSellingItems())
+                .thenThrow(new RuntimeException("Error fetching top selling items."));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/sales/top-selling-items")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").exists());
