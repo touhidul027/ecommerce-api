@@ -3,6 +3,9 @@ package com.wsd.ecommerce.presenter.api;
 import com.wsd.ecommerce.core.service.WishlistService;
 import com.wsd.ecommerce.presenter.domain.request.WishlistRequest;
 import com.wsd.ecommerce.presenter.domain.response.WishlistProductResponse;
+import com.wsd.ecommerce.presenter.model.ApiResponse;
+import com.wsd.ecommerce.presenter.model.ResponseMessage;
+import com.wsd.ecommerce.presenter.utils.ResponseUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/customers")
-public class WishlistResource {
+public class WishlistResource extends BaseResource{
 
     private final WishlistService wishlistService;
 
@@ -20,9 +23,12 @@ public class WishlistResource {
     }
 
     @PostMapping("/wishlist")
-    public ResponseEntity<WishlistProductResponse> getCustomerWishlist(@RequestBody WishlistRequest request) {
+    public ApiResponse<WishlistProductResponse> getCustomerWishlist(@RequestBody WishlistRequest request) {
         WishlistProductResponse wishlistProductResponse
                 = wishlistService.getWishlistResponseByCustomerId(request.getCustomerId());
-        return ResponseEntity.ok(wishlistProductResponse);
+        return ResponseUtils.createSuccessResponseObject(
+                getMessage(ResponseMessage.OPERATION_SUCCESSFUL),
+                wishlistProductResponse
+        );
     }
 }
