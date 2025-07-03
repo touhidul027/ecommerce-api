@@ -3,9 +3,9 @@ spring:
     name: Ecommerce API
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce}  # Fallback: localhost
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}                          # Fallback: 'postgres'
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}                          # Fallback: 'postgres'
     driver-class-name: org.postgresql.Driver
 
   jpa:

@@ -24,14 +24,16 @@ CREATE TABLE IF NOT EXISTS wish_list (
     );
 
 CREATE TABLE IF NOT EXISTS customers (
-    customer_id VARCHAR(255) PRIMARY KEY,
+     id SERIAL PRIMARY KEY,
+    customer_id VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     address VARCHAR(255)
     );
 
 CREATE TABLE IF NOT EXISTS sales (
-    sale_id VARCHAR(255) PRIMARY KEY,
+     id SERIAL PRIMARY KEY,
+    sale_id VARCHAR(255) UNIQUE NOT NULL,
     customer_id VARCHAR(255) NOT NULL,
     sale_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     total_amount NUMERIC(19, 2) NOT NULL,
@@ -40,7 +42,8 @@ CREATE TABLE IF NOT EXISTS sales (
     );
 
 CREATE TABLE IF NOT EXISTS sale_items (
-    sale_item_id VARCHAR(255) PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
+    sale_item_id VARCHAR(255) UNIQUE NOT NULL,
     sale_id VARCHAR(255) NOT NULL,
     product_id VARCHAR(255) NOT NULL,
     quantity INTEGER NOT NULL,
