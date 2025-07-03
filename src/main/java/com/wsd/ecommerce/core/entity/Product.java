@@ -1,16 +1,17 @@
 package com.wsd.ecommerce.core.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @Entity
 @Table(name = "product")
 public class Product implements Serializable {
@@ -37,9 +38,4 @@ public class Product implements Serializable {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-//    @PrePersist
-//    public void prePersist() {
-//        this.createdAt = LocalDateTime.now();
-//    }
 }
